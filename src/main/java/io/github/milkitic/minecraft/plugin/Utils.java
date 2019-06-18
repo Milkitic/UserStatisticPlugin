@@ -1,7 +1,5 @@
 package io.github.milkitic.minecraft.plugin;
 
-import org.slf4j.Logger;
-
 import java.io.*;
 import java.nio.file.Path;
 import java.text.MessageFormat;
@@ -36,19 +34,15 @@ public class Utils {
     }
 
     public static long getPlayerTotalTime(String playerName,
-                                          HashMap<String, Long> totalSecondMap,
-                                          HashMap<String, Calendar> currentDateMap) {
+                                          Map<String, Long> totalSecondMap,
+                                          Map<String, Calendar> currentDateMap) {
         long addTime = getPlayerCurrentTime(playerName, currentDateMap);
-        if (!totalSecondMap.containsKey(playerName)) {
-            return addTime;
-        }
-
         long newTotalTime = totalSecondMap.get(playerName) + addTime;
         return newTotalTime;
     }
 
     public static long getPlayerCurrentTime(String playerName,
-                                            HashMap<String, Calendar> currentDateMap) {
+                                            Map<String, Calendar> currentDateMap) {
         if (!currentDateMap.containsKey(playerName)) {
             return 0;
         }
@@ -58,24 +52,37 @@ public class Utils {
         return addTime;
     }
 
+    public static void updateAllPlayersTotalTime(Calendar lastUpdated,
+                                                Map<String, Calendar> currentDateMap,
+                                                Map<String, Long> totalSecondMap) {
+        totalSecondMap.forEach((k, v)->{
+            if(currentDateMap.containsKey(k)){
+                Calendar loginDate = currentDateMap.get(k);
+                long newTotalTime;
+                if(lastUpdated.after(loginDate)){
+                    newTotalTime = totalSecondMap.get(k) + lastUpdated.getTimeInMillis();
+                }else{
+                    newTotalTime = totalSecondMap.get(k) + loginDate.getTimeInMillis();
+                }
+                totalSecondMap.replace(k, newTotalTime);
+            }
+        });
+    }
+
     public static String getFriendlyHp(double hp) {
         return String.format("%.2f", Math.abs(hp) / 2);
     }
 
-    public static HashMap<String, Long> readConfig(Path path) {
-        HashMap<String, Long> hshMap = new HashMap<>();
+    public static Map<String, Long> readConfig(Path path) {
+        Map<String, Long> hshMap = new HashMap<>();
         try (FileReader reader = new FileReader(path.toString());
-             BufferedReader br = new BufferedReader(reader)
-        ) {
+            BufferedReader br = new BufferedReader(reader)) {
             String line;
             while ((line = br.readLine()) != null) {
-                int index = line.indexOf('=');
-                if (index == -1) continue;
-
-                String name = line.substring(0, index);
-                String strSecs = line.substring(index + 1);
-                long lngSecs = Long.parseLong(strSecs);
-                hshMap.put(name, lngSecs);
+                if(line.contains("=")){
+                    String[] lineSplits = line.split("=");
+                    hshMap.put(lineSplits[0], Long.parseLong(lineSplits[1]));
+                }
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -84,20 +91,13 @@ public class Utils {
         return hshMap;
     }
 
-    public static void writeConfig(Path path, HashMap<String, Long> totalSecondMap, Logger logger) throws IOException {
+    public static void writeConfig(Path path, Map<String, Long> totalSecondMap){
         File file = path.toFile();
-        if (file.exists()) {
-            file.delete();
-        }
-        file.createNewFile();
-
         try (FileWriter writer = new FileWriter(file)) {
-
             for (Map.Entry<String, Long> tuple : totalSecondMap.entrySet()) {
                 String str = MessageFormat.format("{0}={1}\n", tuple.getKey(), tuple.getValue());
                 writer.write(str);
             }
-
             writer.flush();
         } catch (IOException e) {
             e.printStackTrace();

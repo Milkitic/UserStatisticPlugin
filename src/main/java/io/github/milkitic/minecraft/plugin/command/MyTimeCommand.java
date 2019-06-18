@@ -10,20 +10,20 @@ import org.spongepowered.api.entity.living.player.Player;
 import org.spongepowered.api.text.Text;
 
 import java.util.Calendar;
-import java.util.HashMap;
+import java.util.Map;
 
 public class MyTimeCommand implements CommandExecutor {
 
-    private final HashMap<String, Long> playerStatisticMap;
-    private final HashMap<String, Calendar> nowDateMap;
+    private final Map<String, Long> playerStatisticMap;
+    private final Map<String, Calendar> nowDateMap;
 
-    public MyTimeCommand(HashMap<String, Long> playerStatisticMap, HashMap<String, Calendar> nowDateMap) {
+    public MyTimeCommand(Map<String, Long> playerStatisticMap, Map<String, Calendar> nowDateMap) {
         this.playerStatisticMap = playerStatisticMap;
         this.nowDateMap = nowDateMap;
     }
 
     @Override
-    public CommandResult execute(CommandSource src, CommandContext args) throws CommandException {
+    public CommandResult execute(CommandSource src, CommandContext args){
         if (src instanceof Player) {
             Player player = (Player) src;
             String playerName = player.getName();
