@@ -1,14 +1,13 @@
 package io.github.milkitic.minecraft.plugin;
 
 import com.google.inject.Inject;
+import io.github.milkitic.minecraft.plugin.Generic.Tuple;
 import io.github.milkitic.minecraft.plugin.command.MyTimeCommand;
 import io.github.milkitic.minecraft.plugin.template.text.DamageTextTemplate;
 import io.github.milkitic.minecraft.plugin.template.text.NotifyOnJoinTextTemplate;
 import io.github.milkitic.minecraft.plugin.template.text.NotifyTextTemplate;
 import org.slf4j.Logger;
 import org.spongepowered.api.Sponge;
-import org.spongepowered.api.asset.Asset;
-import org.spongepowered.api.asset.AssetManager;
 import org.spongepowered.api.command.spec.CommandSpec;
 import org.spongepowered.api.config.ConfigDir;
 import org.spongepowered.api.entity.Entity;
@@ -32,7 +31,7 @@ import java.nio.file.Path;
 import java.text.MessageFormat;
 import java.util.Calendar;
 import java.util.HashMap;
-import java.util.Optional;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 @Plugin(
@@ -84,7 +83,18 @@ public class UserStatistic {
                 .delay(5, TimeUnit.MINUTES)
                 .execute(() -> {
                     MessageChannel publicChannel = Sponge.getServer().getBroadcastChannel();
-                    Text text = new NotifyTextTemplate(_totalSecondMap, _currentDateMap).build();
+                    NotifyTextTemplate templ = new NotifyTextTemplate(_totalSecondMap, _currentDateMap);
+                    Text text = templ.build();
+                    List<Tuple<String, Long>> tuples = templ.getTuples();
+
+                    if (tuples != null) {
+                        Path dataPath = getDataPath();
+                        try {
+                            Utils.writeConfig(dataPath, tuples, _logger);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
                     publicChannel.send(text);
                 })
                 .name("UserStatistic - Public Message Loop")
