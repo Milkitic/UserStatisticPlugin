@@ -1,6 +1,5 @@
 package io.github.milkitic.minecraft.plugin;
 
-import io.github.milkitic.minecraft.plugin.Generic.Tuple;
 import org.slf4j.Logger;
 
 import java.io.*;
@@ -8,7 +7,6 @@ import java.nio.file.Path;
 import java.text.MessageFormat;
 import java.util.Calendar;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class Utils {
@@ -23,15 +21,15 @@ public class Utils {
         }
 
         if (hour > 0) {
-            sb.append(hour % 24).append("小时");
+            sb.append(hour).append("小时");
         }
 
         if (minute > 0 && day == 0) {
-            sb.append(minute % 60).append("分钟");
+            sb.append(minute).append("分钟");
         }
 
         if (second > 0 && day == 0 && hour == 0) {
-            sb.append(second % 60).append("秒");
+            sb.append(second).append("秒");
         }
 
         return sb.toString();
@@ -75,7 +73,7 @@ public class Utils {
                 if (index == -1) continue;
 
                 String name = line.substring(0, index);
-                String strSecs = line.substring(index + 1).replace(",", "");
+                String strSecs = line.substring(index + 1);
                 long lngSecs = Long.parseLong(strSecs);
                 hshMap.put(name, lngSecs);
             }
@@ -104,14 +102,5 @@ public class Utils {
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    public static void writeConfig(Path path, List<Tuple<String, Long>> totalSecondMap, Logger logger) throws IOException {
-        HashMap<String, Long> hshMap = new HashMap<>();
-        for (Tuple<String, Long> tuple : totalSecondMap) {
-            hshMap.put(tuple.first, tuple.second);
-        }
-        writeConfig(path, hshMap, logger);
-
     }
 }

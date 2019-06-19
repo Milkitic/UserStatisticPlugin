@@ -14,7 +14,6 @@ public class NotifyTextTemplate implements ITextTemplate {
 
     private HashMap<String, Long> _totalSecondMap;
     private HashMap<String, Calendar> _currentDateMap;
-    private List<Tuple<String, Long>> _tuples;
 
     public NotifyTextTemplate(HashMap<String, Long> totalSecondMap, HashMap<String, Calendar> currentDateMap) {
 
@@ -40,7 +39,7 @@ public class NotifyTextTemplate implements ITextTemplate {
         }
 
         tuples.sort(new TupleListComparator());
-        this._tuples = tuples;
+
         Text.Builder builder = Text.builder()
                 .append(Text.of(TextColors.AQUA, "游戏时间统计：\n"));
         for (int i = 0; i < tuples.size(); i++) {
@@ -64,17 +63,13 @@ public class NotifyTextTemplate implements ITextTemplate {
                     break;
             }
 
-            builder = builder.append(Text.of(color, MessageFormat.format("{0}： {1}{2} {3}\n",
+            builder = builder.append(Text.of(color, MessageFormat.format("{0}:{1}{2} {3}\n",
                     i + 1,
                     tuple.first,
-                    //" ",
-                    String.join("", Collections.nCopies(maxLen - tuple.first.length(), " ")),
+                    tuple.second,
+                    new String(new char[]{' '}, 0, maxLen - tuple.first.length()),
                     Utils.getTimeStringBySeconds(tuple.second))));
         }
         return builder.build();
-    }
-
-    public List<Tuple<String, Long>> getTuples(){
-        return _tuples;
     }
 }
