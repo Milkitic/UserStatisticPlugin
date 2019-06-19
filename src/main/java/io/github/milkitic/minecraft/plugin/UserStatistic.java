@@ -7,8 +7,6 @@ import io.github.milkitic.minecraft.plugin.template.text.NotifyOnJoinTextTemplat
 import io.github.milkitic.minecraft.plugin.template.text.NotifyTextTemplate;
 import org.slf4j.Logger;
 import org.spongepowered.api.Sponge;
-import org.spongepowered.api.asset.Asset;
-import org.spongepowered.api.asset.AssetManager;
 import org.spongepowered.api.command.spec.CommandSpec;
 import org.spongepowered.api.config.ConfigDir;
 import org.spongepowered.api.entity.Entity;
@@ -20,6 +18,7 @@ import org.spongepowered.api.event.entity.DamageEntityEvent;
 import org.spongepowered.api.event.game.state.GamePreInitializationEvent;
 import org.spongepowered.api.event.game.state.GameStartedServerEvent;
 import org.spongepowered.api.event.Listener;
+import org.spongepowered.api.event.game.state.GameStoppedServerEvent;
 import org.spongepowered.api.event.network.ClientConnectionEvent;
 import org.spongepowered.api.plugin.Plugin;
 import org.spongepowered.api.scheduler.Task;
@@ -32,7 +31,7 @@ import java.nio.file.Path;
 import java.text.MessageFormat;
 import java.util.Calendar;
 import java.util.HashMap;
-import java.util.Optional;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 @Plugin(
@@ -54,8 +53,10 @@ public class UserStatistic {
     @ConfigDir(sharedRoot = false)
     private Path configDir;
 
-    private HashMap<String, Long> _totalSecondMap;
-    private HashMap<String, Calendar> _currentDateMap;
+    private Map<String, Long> _totalSecondMap;
+    private Map<String, Calendar> _currentDateMap; //login date
+
+    public static Calendar lastUpdated;
 
     @Listener
     public void onPreInitialization(GamePreInitializationEvent event) throws InterruptedException, IOException {
@@ -67,6 +68,7 @@ public class UserStatistic {
             _totalSecondMap = new HashMap<>();
         }
 
+        lastUpdated = Calendar.getInstance();
         _currentDateMap = new HashMap<>();
         createCommands();
         runLoopNotifyTask();
@@ -75,7 +77,9 @@ public class UserStatistic {
     }
 
     @Listener
-    public void onServerStart(GameStartedServerEvent event) {
+    public void onServerStop(GameStoppedServerEvent event) {
+        Utils.updateAllPlayersTotalTime(lastUpdated, _currentDateMap, _totalSecondMap);
+        Utils.writeConfig(getDataPath(), _totalSecondMap);
     }
 
     private void runLoopNotifyTask() {
@@ -83,9 +87,11 @@ public class UserStatistic {
                 .interval(15, TimeUnit.MINUTES)
                 .delay(5, TimeUnit.MINUTES)
                 .execute(() -> {
+                    Utils.updateAllPlayersTotalTime(lastUpdated, _currentDateMap, _totalSecondMap);
                     MessageChannel publicChannel = Sponge.getServer().getBroadcastChannel();
-                    Text text = new NotifyTextTemplate(_totalSecondMap, _currentDateMap).build();
+                    Text text = new NotifyTextTemplate(_totalSecondMap).build();
                     publicChannel.send(text);
+                    lastUpdated = Calendar.getInstance();
                 })
                 .name("UserStatistic - Public Message Loop")
                 .submit(this);
@@ -105,31 +111,27 @@ public class UserStatistic {
         MessageChannel privateChannel = MessageChannel.fixed(player);
 
         String playerName = player.getName();
-        if (_currentDateMap.containsKey(playerName)) {
-            _currentDateMap.replace(playerName, Calendar.getInstance());
-        } else {
-            _currentDateMap.put(playerName, Calendar.getInstance());
-        }
+        _currentDateMap.put(playerName, Calendar.getInstance());
 
-        if (_totalSecondMap.containsKey(playerName)) {
-            long seconds = _totalSecondMap.get(playerName);
-            Text text = new NotifyOnJoinTextTemplate(playerName, seconds).build();
+        _totalSecondMap.computeIfPresent(playerName, (k, v)->{
+            Text text = new NotifyOnJoinTextTemplate(k, v).build();
             privateChannel.send(text);
-        } else {
-            _totalSecondMap.put(playerName, 0L);
-        }
+            return v;
+        });
+        _totalSecondMap.putIfAbsent(playerName, 0L);
     }
 
     @Listener
-    public void onPlayerLeaved(ClientConnectionEvent.Disconnect event) throws IOException {
+    public void onPlayerLeaved(ClientConnectionEvent.Disconnect event) {
         Player player = event.getTargetEntity();
         String playerName = player.getName();
 
         long newTotalTime = Utils.getPlayerTotalTime(playerName, _totalSecondMap, _currentDateMap);
+        _currentDateMap.remove(playerName);
         _totalSecondMap.replace(playerName, newTotalTime);
 
         Path dataPath = getDataPath();
-        Utils.writeConfig(dataPath, _totalSecondMap, _logger);
+        Utils.writeConfig(dataPath, _totalSecondMap);
         _logger.info(MessageFormat.format("{0}\'s Time: {1}",
                 playerName,
                 Utils.getTimeStringBySeconds(newTotalTime))
